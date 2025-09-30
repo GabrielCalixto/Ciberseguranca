@@ -1,20 +1,24 @@
+from math import ceil, sqrt
 from Crypto.Util.number import getPrime, isPrime
 import random
 import time
 import plotly.express as px
 
 def main():
-    print("Select the test to run:")
-    print("1. Basic DSA test with a user-specified n")
-    print("2. Basic DSA test with brute force private key recovery for n = 8 to 16")
-    print("3. Get x from k, when two messages are signed with the same k for n = 8 to 16")
-    print("4. Time taken to get x for a range of n and plot time taken")
-    print("0. All tests")
-    choice = input("Enter the number of the test to run: ")
-    if choice not in ['0', '1', '2', '3', '4']:
-        print("Invalid choice. Running test 1.")
-        choice = '1'
-    tests(choice)
+    choice = ''
+    while choice != 'q':
+        print("Select the test to run:")
+        print("1. Basic DSA test with a user-specified size of p (in bits)")
+        print("2. Basic DSA test with private key recovery with a user-specified size of p (in bits). Comparison of time taken between brute force and baby-step giant-step")
+        print("3. Get x from k, when two messages are signed with the same k for a user-specified size of p (in bits)")
+        print("4. Time taken to get x for a range of n and plot time taken")
+        print("0. All tests")
+        print("q. Quit")
+        choice = input("Enter the number of the test to run: ")
+        if choice not in ['0', '1', '2', '3', '4', 'q']:
+            print("Invalid choice. Running test 1.")
+            choice = '1'
+        tests(choice)
 
 
 # Gets the size of the key "n" as an input and returns a triplet (p, q, g) of DSA parameters
@@ -80,7 +84,7 @@ def get_private_key(y, g, p):
         x = x + 1
         if pow(g, x, p) == y:
             end_cpu = time.process_time()  # Record end CPU time
-            print(f"CPU time: {end_cpu - start_cpu} seconds")
+            print(f"CPU time: {end_cpu - start_cpu} seconds with brute force")
             return (x, end_cpu - start_cpu)
 
 # Given two messages signed with the same k, returns their signatures (r, s1, s2)
@@ -96,26 +100,29 @@ def get_private_key_from_k(message1, message2, p, q, g, x, k):
     (r, s1, s2) = dsa_sign_with_same_k(message1, message2, p, q, g, x, k)
     return ((s2 * message1 - s1 * message2) * pow(r * (s1 - s2), -1, q)) % q
 
-def baby_step_giant_step(g, y, p):
-    m = int(p**0.5) + 1
-
+def get_private_key_bsgs(y, g, p):
+    start_cpu = time.process_time()  # Record start CPU time
+    m = ceil(sqrt(p - 1)) 
+    
     # Baby step
     baby_steps = {}
-    for j in range(m):
-        value = pow(g, j, p)
-        baby_steps[value] = j
+    for i in range(m):
+        value = pow(g, i, p)
+        baby_steps[value] = i # Store the value and its corresponding i
 
     # Precompute g^(-m) mod p
     g_m_inv = pow(g, p - m - 1, p)
 
     # Giant step
     current = y
-    for i in range(m):
+    for j in range(m):
         if current in baby_steps:
-            return i * m + baby_steps[current]
+            end_cpu = time.process_time()  # Record end CPU time
+            print(f"CPU time: {end_cpu - start_cpu} seconds with baby-step giant-step")
+            return (j * m + baby_steps[current], end_cpu - start_cpu)
         current = (current * g_m_inv) % p
 
-    return None  # Logarithm not found
+    return (None, end_cpu - start_cpu)  # Logarithm not found
 
 
 def tests(test_to_run):
@@ -140,49 +147,64 @@ def tests(test_to_run):
 
     if(test_to_run == '2' or test_to_run == '0'):
         # Basic test of DSA functions with a brute force recovery of the private key at the end, for n = 8 to 15
-        for n in range(8, 17, 1):
-            print(f"Testing DSA implementation with n = {n} bits:\n")
-            (p, q, g) = get_DSAparameters(n)
-            print(f"Generated DSA parameters:\np = {p}\nq = {q}\ng = {g}\n")
-            (x, y) = get_skeys(p, q, g)
-            print(f"Generated key pair:\nPrivate key (x) = {x}\nPublic key (y) = {y}\n")
-            m = random.randint(0, 999999999)  # Random integer from 0 to 999,999,999 (up to 9 digits)
-            (r, s) = dsa_sign(m, p, q, g, x)
-            print(f"Signature for message {m}:\nr = {r}\ns = {s}\n")
-            is_valid = dsa_verify(m, r, s, p, q, g, y)
-            print(f"Signature verification for message {m}. Expected True, got: {is_valid}\n")
-            is_valid = dsa_verify(m, r + 1, s, p, q, g, y)
-            print(f"Signature verification for message {m} with incorrect signature parameters. Expected False, got: {is_valid}\n")
-            
-            print(f"Attempting to recover private key by brute force:")
-            (x_recovered, cpu_time) = get_private_key(y, g, p)
-            print(f"Recovered private key by brute force: x = {x_recovered}\n")
+        try: 
+            n = int(input("Enter a value for n: "))
+        except ValueError:
+            print("Invalid input. Using default value of 16.")
+            n = 16
+
+        print(f"Testing DSA implementation with n = {n} bits:\n")
+        (p, q, g) = get_DSAparameters(n)
+        print(f"Generated DSA parameters:\np = {p}\nq = {q}\ng = {g}\n")
+        (x, y) = get_skeys(p, q, g)
+        print(f"Generated key pair:\nPrivate key (x) = {x}\nPublic key (y) = {y}\n")
+        m = random.randint(0, 999999999)  # Random integer from 0 to 999,999,999 (up to 9 digits)
+        (r, s) = dsa_sign(m, p, q, g, x)
+        print(f"Signature for message {m}:\nr = {r}\ns = {s}\n")
+        is_valid = dsa_verify(m, r, s, p, q, g, y)
+        print(f"Signature verification for message {m}. Expected True, got: {is_valid}\n")
+        is_valid = dsa_verify(m, r + 1, s, p, q, g, y)
+        print(f"Signature verification for message {m} with incorrect signature parameters. Expected False, got: {is_valid}\n")
+        
+        print(f"Attempting to recover private key by brute force:")
+        (x_recovered, cpu_time) = get_private_key(y, g, p)
+        print(f"Recovered private key by brute force: x = {x_recovered}\n")
+        
+        print(f"Attempting to recover private key by baby-step giant-step:")
+        (x_recovered_bsgs, cpu_time_bsgs) = get_private_key_bsgs(y, g, p)
+        print(f"Recovered private key by baby-step giant-step: x = {x_recovered_bsgs}\n")
 
     if(test_to_run == '3' or test_to_run == '0'):
         # Test for getting x from k, when two messages are signed with the same k
-        for n in range(8, 17, 1):
-            print(f"Testing recovery of private key x from two signatures with the same k with n = {n}:\n")
-            (p, q, g) = get_DSAparameters(n)
-            print(f"Generated new DSA parameters for repeated k test:\np = {p}\nq = {q}\ng = {g}\n")
-            (x, y) = get_skeys(p, q, g)
-            m1 = random.randint(0, 999999999)  # Random integer from 0 to 999,999,999 (up to 9 digits)
-            m2 = random.randint(0, 999999999)  # Random integer from 0 to 999,999,999 (up to 9 digits)
-            print(f"Generated key pair for repeated k test:\nPrivate key (x) = {x}\nPublic key (y) = {y}\n")
-            x_from_k = get_private_key_from_k(m1, m2, p, q, g, x, (p-1 // q))  # Using k = (p-1)/q for the test
-            print(f"Recovered private key from two signatures with same k: x = {x_from_k}\n")
+        try: 
+            n = int(input("Enter a value for n: "))
+        except ValueError:
+            print("Invalid input. Using default value of 16.")
+            n = 16
+
+        print(f"Testing recovery of private key x from two signatures with the same k with n = {n}:\n")
+        (p, q, g) = get_DSAparameters(n)
+        print(f"Generated new DSA parameters for repeated k test:\np = {p}\nq = {q}\ng = {g}\n")
+        (x, y) = get_skeys(p, q, g)
+        m1 = random.randint(0, 999999999)  # Random integer from 0 to 999,999,999 (up to 9 digits)
+        m2 = random.randint(0, 999999999)  # Random integer from 0 to 999,999,999 (up to 9 digits)
+        print(f"Generated key pair for repeated k test:\nPrivate key (x) = {x}\nPublic key (y) = {y}\n")
+        x_from_k = get_private_key_from_k(m1, m2, p, q, g, x, (p-1 // q))  # Using k = (p-1)/q for the test
+        print(f"Recovered private key from two signatures with same k: x = {x_from_k}\n")
 
     if(test_to_run == '4' or test_to_run == '0'):
         # Test time taken to get x for a range of n and plot CPU and actual time taken
         try :
             n_lower_bound = int(input("Enter the lower bound for n: "))
-            n_upper_bound = int(input("Enter the lower bound for n: "))
+            n_upper_bound = int(input("Enter the upper bound for n: "))
         except ValueError:
             print("Invalid input. Using default values of 8 and 30.")
             n_lower_bound = 8
             n_upper_bound = 30
         times_cpu = []
+        times_cpu_bsgs = []
         ns = []
-        for i in range(0, 6, 1): # Repeat the whole test 6 times to get more data points
+        for i in range(0, 4, 1): # Repeat the whole test 3 times to get more data points
             for n in range(n_lower_bound, n_upper_bound, 1):
                 print(f"Testing time taken to recover private key for n = {n} bits:")
                 (p, q, g) = get_DSAparameters(n)
@@ -190,9 +212,13 @@ def tests(test_to_run):
                 (x_recovered, cpu_time) = get_private_key(y, g, p)
                 ns.append(n)  
                 times_cpu.append(cpu_time)
+                (x_recovered, cpu_time_bsgs) = get_private_key_bsgs(y, g, p)
+                times_cpu_bsgs.append(cpu_time_bsgs)
 
-        fig = px.scatter(x=ns, y=times_cpu, labels={'x': 'n (bits)', 'y': 'Time (seconds)'}, title='Real Time to Recover Private Key vs n')        
-        fig.show()
+        fig_brute_force = px.scatter(x=ns, y=times_cpu, labels={'x': 'n (bits)', 'y': 'Time (seconds)'}, title='Real Time to Recover Private Key vs n')        
+        fig_bsgs = px.scatter(x=ns, y=times_cpu_bsgs, labels={'x': 'n (bits)', 'y': 'Time (seconds)'}, title='Real Time to Recover Private Key vs n using Baby-step Giant-step')
+        fig_brute_force.show()
+        fig_bsgs.show()
 
 if __name__ == "__main__":
     main()
