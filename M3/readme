@@ -1,0 +1,20 @@
+1.	Análise do código base:
+  Analisar a estrutura do projeto, identificar funções chave e decidir onde aplicar o SGX.
+
+2.	Planeamento e criação do projeto:
+  Criar um projeto aplicando o SGX, integrando o código base.
+
+3.	Cifra AES-GCM:
+  Implementar funções que garantam que toda a carteira é cifrada com AES-GCM.
+
+4.	Selagem e desselagem:
+  Implementar a selagem (dados são guardados de forma segura) e a desselagem (recuperação dos dados cifrados do ficheiro).
+
+5.	Carteira:
+  Implementar as 5 operações - criar carteira, mostrar conteúdo da carteira, criar credenciais, eliminar credenciais e gerar senhas.
+
+6.	Testes:
+  Testar o programa e validar o funcionamento do SGX.
+
+7.	Relatório:
+  Fazer relatório e gerar o .zip final.
