@@ -1,0 +1,3 @@
+ocall_save_file: CWD=/home/user/Desktop/Labs/trabalho/ewallet_sgx/application/bin, len=30672
+ocall_save_file: CWD=/home/user/Desktop/Labs/trabalho/ewallet_sgx/application/bin, len=30672
+ocall_save_file: CWD=/home/user/Desktop/Labs/trabalho/ewallet_sgx/application/bin, len=30672

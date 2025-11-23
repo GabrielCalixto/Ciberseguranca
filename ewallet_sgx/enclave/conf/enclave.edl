@@ -1,0 +1,79 @@
+/* Enclave.edl - Top EDL file. */
+
+enclave {
+
+    struct item_t {
+        char title[100];
+        char username[100];
+        char password[100];
+    };
+
+    struct wallet_t {
+        struct item_t items[100];
+        size_t size;
+        char master_password[100];
+    };
+
+    untrusted {
+        int ocall_load_file(
+            [out, size=maxlen] uint8_t* buffer,
+            uint32_t maxlen,
+            [out] uint32_t* read_bytes
+        );
+
+        int ocall_save_file(
+            [in, size=len] uint8_t* buffer,
+            uint32_t len
+        );
+
+        void ocall_print_string(
+            [in, string] const char* str
+        );
+    };
+
+
+    trusted {
+         public int ecall_create_wallet(
+            [in, string] const char* master_password
+        );
+
+        public int ecall_add_item(
+            [in, string] const char* master_password,
+            [in, size=item_size] item_t* item,
+            size_t item_size
+        );
+
+        public int ecall_remove_item(
+            [in, string] const char* master_password,
+            int index
+        );
+
+        public int ecall_show_wallet(
+            [in, string] const char* master_password
+        );
+
+        public int ecall_change_master_password(
+            [in, string] const char* old_password,
+            [in, string] const char* new_password
+        );
+
+        public int ecall_generate_password(
+            [out, size=len] char* password,
+            size_t len
+        );
+
+        public sgx_status_t ecall_seal_wallet(
+            [in] wallet_t* wallet,
+            [out, size=sealed_buf_size] uint8_t* sealed_buf,
+            uint32_t sealed_buf_size,
+            [out] uint32_t* sealed_size_out
+        );
+
+        public sgx_status_t ecall_unseal_wallet(
+            [in, size=sealed_size] uint8_t* sealed_buf,
+            uint32_t sealed_size,
+            [out] wallet_t* wallet_out
+        );
+
+    };
+};
